@@ -1,10 +1,65 @@
 <?php
 namespace Message;
 
+use InvalidArgumentException;
 use Psr\Http\Message\UriInterface;
 
 class Uri implements UriInterface
 {
+    private $scheme;
+    private $userInfo;
+    private $host;
+    private $port;
+    private $path;
+    private $query;
+    private $fragment;
+
+    const PORTS = [
+        'http' => 80,
+        'https' => 443
+    ];
+
+    public static function create($uri = '')
+    {
+        if (!empty($uri)) {
+            return self::createFromString($uri);
+        }
+
+        $scheme = $_SERVER['REQUEST_SCHEME'] ?? '';
+
+        $userInfo = $_SERVER['PHP_AUTH_USER'] ?? '';
+        if (!empty($_SERVER['PHP_AUTH_PW'])) {
+            $userInfo .= ":" . $_SERVER['PHP_AUTH_PW'];
+        }
+
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        $port = (int)$_SERVER['SERVER_PORT'] ?? '';
+
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+        $requestUri = explode("?", $requestUri);
+        $path = $requestUri[0] ?? '';
+
+        $query = $_SERVER['QUERY_STRING'] ?? '';
+        $fragment = '';
+
+        return new self($scheme, $userInfo, $host, $port, $path, $query, $fragment);
+    }
+
+    public function __construct($scheme, $userInfo, $host, $port, $path, $query, $fragment)
+    {
+        $this->scheme = $scheme;
+        $this->userInfo = $userInfo;
+        $this->host = $host;
+        $this->port = $port;
+        $this->path = $path;
+        $this->query = $query;
+        $this->fragment = $fragment;
+    }
+
+    private static function createFromString($uri)
+    {
+
+    }
 
     /**
      * Retrieve the scheme component of the URI.
@@ -22,7 +77,7 @@ class Uri implements UriInterface
      */
     public function getScheme()
     {
-        // TODO: Implement getScheme() method.
+        return $this->scheme;
     }
 
     /**
@@ -45,7 +100,28 @@ class Uri implements UriInterface
      */
     public function getAuthority()
     {
-        // TODO: Implement getAuthority() method.
+        $authority = '';
+        $authority .= $this->userInfo;
+
+        if (!empty($this->userInfo)) {
+            $authority .= "@";
+        }
+
+        $authority .= $this->host;
+
+        if (!$this->isCommonPort($this->port, $this->scheme)) {
+            $authority = $authority . ":" . $this->port;
+        }
+
+        return $authority;
+    }
+
+    private function isCommonPort($port, $scheme) {
+        if (isset(self::PORTS[$scheme]) && self::PORTS[$scheme] === (int)$port) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -65,7 +141,7 @@ class Uri implements UriInterface
      */
     public function getUserInfo()
     {
-        // TODO: Implement getUserInfo() method.
+        return $this->userInfo;
     }
 
     /**
@@ -81,7 +157,7 @@ class Uri implements UriInterface
      */
     public function getHost()
     {
-        // TODO: Implement getHost() method.
+        return $this->host;
     }
 
     /**
@@ -101,7 +177,7 @@ class Uri implements UriInterface
      */
     public function getPort()
     {
-        // TODO: Implement getPort() method.
+        return $this->port;
     }
 
     /**
@@ -131,7 +207,7 @@ class Uri implements UriInterface
      */
     public function getPath()
     {
-        // TODO: Implement getPath() method.
+        return $this->path;
     }
 
     /**
@@ -156,7 +232,7 @@ class Uri implements UriInterface
      */
     public function getQuery()
     {
-        // TODO: Implement getQuery() method.
+        return $this->query;
     }
 
     /**
@@ -177,7 +253,7 @@ class Uri implements UriInterface
      */
     public function getFragment()
     {
-        // TODO: Implement getFragment() method.
+        return $this->fragment;
     }
 
     /**
@@ -193,11 +269,18 @@ class Uri implements UriInterface
      *
      * @param string $scheme The scheme to use with the new instance.
      * @return static A new instance with the specified scheme.
-     * @throws \InvalidArgumentException for invalid or unsupported schemes.
+     * @throws InvalidArgumentException for invalid or unsupported schemes.
      */
     public function withScheme($scheme)
     {
-        // TODO: Implement withScheme() method.
+        if (!array_key_exists($scheme, self::PORTS)) {
+            throw new InvalidArgumentException();
+        }
+
+        $uri = clone $this;
+        $uri->scheme = $scheme;
+
+        return $uri;
     }
 
     /**
@@ -216,7 +299,15 @@ class Uri implements UriInterface
      */
     public function withUserInfo($user, $password = null)
     {
-        // TODO: Implement withUserInfo() method.
+        $userInfo = $user;
+        if (isset($password)) {
+            $userInfo .= ":" . $password;
+        }
+
+        $uri = clone $this;
+        $uri->userInfo = $userInfo;
+
+        return $uri;
     }
 
     /**
@@ -229,11 +320,15 @@ class Uri implements UriInterface
      *
      * @param string $host The hostname to use with the new instance.
      * @return static A new instance with the specified host.
-     * @throws \InvalidArgumentException for invalid hostnames.
+     * @throws InvalidArgumentException for invalid hostnames.
      */
     public function withHost($host)
     {
-        // TODO: Implement withHost() method.
+        $uri = clone $this;
+
+        $uri->host = $host;
+
+        return $uri;
     }
 
     /**
@@ -251,11 +346,18 @@ class Uri implements UriInterface
      * @param null|int $port The port to use with the new instance; a null value
      *     removes the port information.
      * @return static A new instance with the specified port.
-     * @throws \InvalidArgumentException for invalid ports.
+     * @throws InvalidArgumentException for invalid ports.
      */
     public function withPort($port)
     {
-        // TODO: Implement withPort() method.
+        if ($port > 49151) {
+            throw new InvalidArgumentException();
+        }
+
+        $uri = clone $this;
+        $uri->port = $port;
+
+        return $uri;
     }
 
     /**
@@ -278,11 +380,14 @@ class Uri implements UriInterface
      *
      * @param string $path The path to use with the new instance.
      * @return static A new instance with the specified path.
-     * @throws \InvalidArgumentException for invalid paths.
+     * @throws InvalidArgumentException for invalid paths.
      */
     public function withPath($path)
     {
-        // TODO: Implement withPath() method.
+        $uri = clone $this;
+        $uri->path = $path;
+
+        return $uri;
     }
 
     /**
@@ -298,11 +403,14 @@ class Uri implements UriInterface
      *
      * @param string $query The query string to use with the new instance.
      * @return static A new instance with the specified query string.
-     * @throws \InvalidArgumentException for invalid query strings.
+     * @throws InvalidArgumentException for invalid query strings.
      */
     public function withQuery($query)
     {
-        // TODO: Implement withQuery() method.
+        $uri = clone $this;
+
+        $uri->query = $query;
+        return $uri;
     }
 
     /**
@@ -321,7 +429,10 @@ class Uri implements UriInterface
      */
     public function withFragment($fragment)
     {
-        // TODO: Implement withFragment() method.
+        $uri = clone $this;
+        $uri->fragment = $fragment;
+
+        return $uri;
     }
 
     /**
@@ -349,6 +460,31 @@ class Uri implements UriInterface
      */
     public function __toString()
     {
-        // TODO: Implement __toString() method.
+        $uri = '';
+
+        if (isset($this->scheme)) {
+            $uri .= $this->getScheme() . ":";
+        }
+
+        $uri .= $this->getUserInfo() . "//";
+        $uri .= $this->getHost();
+
+        if (!empty($this->getPath())) {
+            $uri .= $this->getPath();
+        }
+
+        if (!$this->isCommonPort($this->getPort(), $this->getScheme())) {
+            $uri .= ":" . $this->getPort();
+        }
+
+        if (!empty($this->getQuery())) {
+            $uri .= "?" . $this->getQuery();
+        }
+
+        if (!empty($this->getFragment())) {
+            $uri .= "#" . $this->getFragment();
+        }
+
+        return $uri;
     }
 }
