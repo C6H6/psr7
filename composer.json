@@ -1,0 +1,14 @@
+{
+  "name": "C6H6/psr7",
+  "license": "MIT",
+  "require": {
+    "php": "^7.1",
+    "composer/composer": "dev-master",
+    "psr/http-message": "dev-master"
+  },
+  "autoload": {
+    "psr-4": {
+      "Message\\": "src/"
+    }
+  }
+}
