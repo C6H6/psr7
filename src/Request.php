@@ -10,13 +10,21 @@ class Request implements ServerRequestInterface
 {
     private $protocolVersion;
     private $headers;
+    private $method;
+    private $uri;
+    private $cookie;
+
+    const METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH'];
 
     public static function create()
     {
         $protocolVersion = explode("/", $_SERVER['SERVER_PROTOCOL'])[1];
         $headers = self::getAllHeaders();
+        $method = $_SERVER['REQUEST_METHOD'] ?? '';
+        $uri = Uri::create();
+        $cookie = $_COOKIE;
 
-        $request = new static($protocolVersion, $headers);
+        $request = new static($protocolVersion, $headers, $method, $uri, $cookie);
         return $request;
     }
 
@@ -32,10 +40,13 @@ class Request implements ServerRequestInterface
         return $headers;
     }
 
-    public function __construct($protocolVersion, $headers)
+    public function __construct($protocolVersion, $headers, $method, $uri, $cookie)
     {
         $this->protocolVersion = $protocolVersion;
         $this->headers = $headers;
+        $this->method = $method;
+        $this->uri = $uri;
+        $this->cookie = $cookie;
     }
 
     /**
@@ -345,7 +356,7 @@ class Request implements ServerRequestInterface
      */
     public function getMethod()
     {
-        // TODO: Implement getMethod() method.
+        return $this->method;
     }
 
     /**
@@ -365,7 +376,14 @@ class Request implements ServerRequestInterface
      */
     public function withMethod($method)
     {
-        // TODO: Implement withMethod() method.
+        if (!in_array($method, self::METHODS)) {
+            throw new InvalidArgumentException();
+        }
+
+        $request = clone $this;
+        $request->method = $method;
+
+        return $request;
     }
 
     /**
@@ -379,7 +397,7 @@ class Request implements ServerRequestInterface
      */
     public function getUri()
     {
-        // TODO: Implement getUri() method.
+        return $this->uri;
     }
 
     /**
@@ -414,7 +432,17 @@ class Request implements ServerRequestInterface
      */
     public function withUri(UriInterface $uri, $preserveHost = false)
     {
-        // TODO: Implement withUri() method.
+        $request = clone $this;
+
+        if ($preserveHost && !empty($request->getHeaderLine('HOST'))) {
+            $request->uri = $uri;
+            return $request;
+        }
+
+        $request->uri = $uri;
+        $request = $request->withHeader('HOST', $uri->getHost());
+
+        return $request;
     }
 
     /**
@@ -428,7 +456,7 @@ class Request implements ServerRequestInterface
      */
     public function getServerParams()
     {
-        // TODO: Implement getServerParams() method.
+        return $_SERVER;
     }
 
     /**
@@ -443,7 +471,7 @@ class Request implements ServerRequestInterface
      */
     public function getCookieParams()
     {
-        // TODO: Implement getCookieParams() method.
+        return $this->cookie;
     }
 
     /**
@@ -465,7 +493,10 @@ class Request implements ServerRequestInterface
      */
     public function withCookieParams(array $cookies)
     {
-        // TODO: Implement withCookieParams() method.
+        $request = clone $this;
+        $request->cookie = $cookies;
+
+        return $request;
     }
 
     /**
