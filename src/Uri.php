@@ -58,7 +58,22 @@ class Uri implements UriInterface
 
     private static function createFromString($uri)
     {
+        $result = parse_url($uri);
 
+        $scheme = $result['scheme'] ?? '';
+        $userInfo = $result['user'] ?? '';
+
+        if (!empty($result['pass'])) {
+            $userInfo .= ":" . $result['pass'];
+        }
+
+        $host = $result['host'] ?? '';
+        $port = $result['port'] ?? '';
+        $path = $result['path'] ?? '';
+        $query = $result['query'] ?? '';
+        $fragment = $result['fragment'] ?? '';
+
+        return new self($scheme, $userInfo, $host, $port, $path, $query, $fragment);
     }
 
     /**
